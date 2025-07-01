@@ -1,0 +1,1 @@
+# succinct-personality-test
