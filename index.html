@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Succinct Personality Quiz</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root{--pink:#ff00b8;--dark:#1c1c1e}
+    *{box-sizing:border-box;font-family:'Montserrat',sans-serif}
+    body{margin:0;padding:0;min-height:100vh;background:var(--dark);color:#fff;display:flex;flex-direction:column;align-items:center;gap:1.5rem}
+    h1{margin-top:2rem;text-align:center;color:var(--pink)}
+    section{width:100%;max-width:500px;padding:1rem}
+    .hidden{display:none !important}
+    /* ENTRY */
+    #langBtns{display:flex;justify-content:center;gap:.5rem;margin-bottom:.75rem}
+    #langBtns button{flex:1;padding:.5rem;border:1px solid var(--pink);border-radius:.5rem;background:transparent;color:#fff;cursor:pointer;transition:background .2s}
+    #langBtns button.active,#langBtns button:hover{background:var(--pink)}
+    #entry input{width:100%;padding:.75rem 1rem;border:none;border-radius:.5rem;font-size:1rem}
+    #entry button{margin-top:1rem;width:100%;padding:.75rem;font-size:1rem;border:none;border-radius:.5rem;background:var(--pink);color:#fff;cursor:pointer;transition:opacity .2s}
+    #entry button:hover{opacity:.85}
+    /* QUIZ */
+    #quiz form{display:flex;flex-direction:column;gap:1.25rem}
+    .question{display:flex;flex-direction:column;gap:.5rem}
+    .question p{margin:0;font-weight:700}
+    .question label{display:flex;align-items:center;gap:.5rem;cursor:pointer}
+    .question input{accent-color:var(--pink)}
+    #submitQuiz{margin-top:1rem;padding:.75rem;background:var(--pink);color:#fff;border:none;border-radius:.5rem;font-size:1rem;cursor:pointer}
+    /* LOADING */
+    #loading{display:flex;flex-direction:column;align-items:center;gap:1rem}
+    #loading p{font-size:1.25rem;color:var(--pink)}
+    /* RESULT */
+    #card{position:relative;width:100%;background:#fff;border-radius:1rem;overflow:hidden;color:#000;text-align:center;padding-bottom:2rem}
+    #card img{width:100%;height:200px;object-fit:cover}
+    #personaTitle{margin:1rem 0 .5rem;color:var(--pink)}
+    #personaDesc{margin:0 1rem .75rem;font-size:.95rem;line-height:1.3}
+    #personaName{margin:0;font-weight:700}
+    #downloadBtn,#shareBtn{width:100%;margin-top:1rem;padding:.75rem;border:2px solid var(--pink);border-radius:.5rem;background:transparent;color:#fff;font-size:1rem;cursor:pointer;transition:background .2s}
+    #downloadBtn:hover,#shareBtn:hover{background:var(--pink)}
+  </style>
+</head>
+<body>
+  <h1 id="mainTitle">Succinct Personality Quiz</h1>
+
+  <!-- ENTRY -->
+  <section id="entry">
+    <div id="langBtns">
+      <button class="langBtn active" data-lang="en">English</button>
+      <button class="langBtn" data-lang="tr">Türkçe</button>
+    </div>
+    <input id="nameInput" placeholder="Enter your name →" />
+    <button id="startBtn">Start the Quiz</button>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="quiz" class="hidden">
+    <form id="quizForm"></form>
+    <button id="submitQuiz">Reveal My Vibe</button>
+  </section>
+
+  <!-- LOADING -->
+  <section id="loading" class="hidden">
+    <p id="loadingMsg">Analyzing...</p>
+  </section>
+
+  <!-- RESULT -->
+  <section id="result" class="hidden">
+    <div id="card">
+      <img id="personaImg" src="" alt="persona" />
+      <h2 id="personaTitle"></h2>
+      <p id="personaDesc"></p>
+      <h3 id="personaName"></h3>
+    </div>
+    <button id="downloadBtn">Download Card</button>
+    <button id="shareBtn">Share on Twitter</button>
+  </section>
+
+  <script>
+    /* ---------- TRANSLATIONS ---------- */
+    const t={
+      en:{
+        title:"Succinct Personality Quiz",
+        namePH:"Enter your name →",
+        startBtn:"Start the Quiz",
+        submitBtn:"Reveal My Vibe",
+        loading:"Analyzing...",
+        downloadBtn:"Download Card",
+        shareBtn:"Share on Twitter",
+        shareTweet:"My Succinct vibe is {persona}! Find yours here →",
+        questions:[
+          {text:"Your friend drops a fresh crypto tip. You…",opts:["A) Ape in immediately – YOLO!","B) DM the squad so nobody misses out","C) Whip up a meme first, obviously","D) Bookmark it – I'm here for the long game"]},
+          {text:"Market dips 20% overnight. What now?",opts:["A) Buy the dip before it flips","B) Cheer everyone up in Discord","C) Post a ‘this is fine’ GIF","D) Hold tight – diamond hands"]},
+          {text:"How do you usually add value to a project?",opts:["A) Test every new feature first","B) Write easy guides & threads","C) Meme it into virality","D) Stake, vote, hold"]},
+          {text:"Pick a weekend activity:",opts:["A) Hunting the next airdrop","B) Hosting a community game night","C) Creating dank stickers","D) Checking my long-term bags"]},
+          {text:"Your ideal crypto swag item?",opts:["A) Limited-edition launch tee","B) Fun sticker pack for friends","C) Holographic meme card","D) Metal hardware wallet"]}
+        ],
+        personas:[
+          {id:"trend",title:"Trend Setter",desc:"First in, first minted! You love discovering projects before they moon.",img:"images/images1.png",min:5,max:8},
+          {id:"helper",title:"Community Helper",desc:"Heart of the Discord. Guides, answers, good vibes – you keep the fam together.",img:"images/images2.jpeg",min:9,max:12},
+          {id:"meme",title:"Meme Master",desc:"JPEGs, GIFs & laughs – your content pumps bags and morale alike.",img:"images/images3.jpeg",min:13,max:16},
+          {id:"diamond",title:"Diamond Hands",desc:"Patience is power. You believe in fundamentals and hodl through every storm.",img:"images/images4.jpeg",min:17,max:20}
+        ]
+      },
+      tr:{
+        title:"Succinct Kişilik Testi",
+        namePH:"Adını yaz →",
+        startBtn:"Teste Başla",
+        submitBtn:"Sonucu Gör",
+        loading:"Analiz Ediliyor...",
+        downloadBtn:"Kartı İndir",
+        shareBtn:"Twitter'da Paylaş",
+        shareTweet:"Benim Succinct kişiliğim {persona}! Seninki ne? →",
+        questions:[
+          {text:"Bir arkadaşın yeni bir kripto tüyosu attı. Ne yaparsın?",opts:["A) Hemen dalarım – YOLO!","B) Discord'da ekibe fısıldarım","C) Önce bir meme hazırlarım","D) Yer imi koyarım – uzun vadeciyim"]},
+          {text:"Piyasa bir gecede %20 düştü. Şimdi ne yapacaksın?",opts:["A) Dipten al, tersine dönmeden","B) Herkesi neşelendiririm","C) 'Bu iyi' GIF'i atarım","D) Sıkı tutun – elmas eller"]},
+          {text:"Projeye nasıl katkı sağlarsın?",opts:["A) Yeni özellikleri ilk ben test ederim","B) Kolay rehberler yazarım","C) Meme ile hype'larım","D) Stake, oy ver, tut"]},
+          {text:"Hafta sonu aktiviten?",opts:["A) Bir sonraki airdropu kovalamak","B) Topluluk oyun gecesi","C) Sticker tasarlamak","D) Çantalarımı kontrol etmek"]},
+          {text:"Favori kripto merch'in?",opts:["A) Lansman tişörtü","B) Sticker paketi","C) Holografik meme kartı","D) Metal donanım cüzdanı"]}
+        ],
+        personas:[
+          {id:"trend",title:"Trend Avcısı",desc:"İlk sen girer, ilk sen mintlersin! Moonlamadan önce projeleri keşfetmeyi seversin.",img:"images/images1.png",min:5,max:8},
+          {id:"helper",title:"Topluluk Destekçisi",desc:"Discord'un kalbi sensin. Rehberler, cevaplar, iyi enerji – aileyi bir arada tutarsın.",img:"images/images2.jpeg",min:9,max:12},
+          {id:"meme",title:"Meme Ustası",desc:"JPEG, GIF, kahkaha – hem çantaları hem moralleri pompalarsın.",img:"images/images3.jpeg",min:13,max:16},
+          {id:"diamond",title:"Elmas Eller",desc:"Sabır güçtür. Temele inanır ve her fırtınada hodl yaparsın.",img:"images/images4.jpg",min:17,max:20}
+        ]
+      }
+    };
+
+    /* ---------- GLOBALS ---------- */
+    let lang='en';
+    const langButtons=document.querySelectorAll('.langBtn');
+    langButtons.forEach(btn=>btn.addEventListener('click',()=>{langButtons.forEach(b=>b.classList.remove('active'));btn.classList.add('active');lang=btn.dataset.lang;updateTexts();}));
+
+    /* ---------- DOM REFS ---------- */
+    const mainTitle=document.getElementById('mainTitle');
+    const entry=document.getElementById('entry');
+    const quiz=document.getElementById('quiz');
+    const loadingSection=document.getElementById('loading');
+    const loadingMsg=document.getElementById('loadingMsg');
+    const result=document.getElementById('result');
+    const nameInput=document.getElementById('nameInput');
+    const startBtn=document.getElementById('startBtn');
+    const quizForm=document.getElementById('quizForm');
+    const submitQuiz=document.getElementById('submitQuiz');
+    const personaImg=document.getElementById('personaImg');
+    const personaTitle=document.getElementById('personaTitle');
+    const personaDesc=document.getElementById('personaDesc');
+    const personaName=document.getElementById('personaName');
+    const downloadBtn=document.getElementById('downloadBtn');
+    const shareBtn=document.getElementById('shareBtn');
+
+    updateTexts();
+
+    /* ---------- EVENTS ---------- */
+    startBtn.addEventListener('click',()=>{const n=nameInput.value.trim();if(!n)return alert(lang==='tr'?'Lütfen adını yaz':'Please enter your name');buildQuiz();entry.classList.add('hidden');quiz.classList.remove('hidden');});
+
+    submitQuiz.addEventListener('click',()=>{
+      const answers=[...quizForm.querySelectorAll('input:checked')];
+      if(answers.length<t[lang].questions.length)return alert(lang==='tr'?'Tüm soruları yanıtlayın!':'Answer all questions!');
+      const total=answers.reduce((s,e)=>s+Number(e.value),0);
+      const persona=t[lang].personas.find(p=>total>=p.min&&total<=p.max);
+      // show loading
+      quiz.classList.add('hidden');
+      loadingMsg.textContent=t[lang].loading;
+      loadingSection.classList.remove('hidden');
+      setTimeout(()=>{
+        // populate card after 3s
+        personaImg.src=persona.img;
+        personaTitle.textContent=persona.title;
+        personaDesc.textContent=persona.desc;
+        personaName.textContent=nameInput.value.trim();
+        loadingSection.classList.add('hidden');
+        result.classList.remove('hidden');
+      },3000);
+    });
+
+    downloadBtn.addEventListener('click',()=>{html2canvas(document.getElementById('card')).then(canvas=>{const link=document.createElement('a');link.download='succinct-vibe.png';link.href=canvas.toDataURL('image/png');link.click();});});
+
+    shareBtn.addEventListener('click',()=>{const txt=t[lang].shareTweet.replace('{persona}',personaTitle.textContent);const url=encodeURIComponent(window.location.href);window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}&url=${url}`,'_blank');});
+
+    /* ---------- FUNCTIONS ---------- */
+    function updateTexts(){mainTitle.textContent=t[lang].title;nameInput.placeholder=t[lang].namePH;startBtn.textContent=t[lang].startBtn;submitQuiz.textContent=t[lang].submitBtn;loadingMsg.textContent=t[lang].loading;downloadBtn.textContent=t[lang].downloadBtn;shareBtn.textContent=t[lang].shareBtn;}
+
+    function buildQuiz(){quizForm.innerHTML='';t[lang].questions.forEach((q,i)=>{const wrap=document.createElement('div');wrap.className='question';const p=document.createElement('p');p.textContent=`${i+1}. ${q.text}`;wrap.appendChild(p);q.opts.forEach((opt,oi)=>{const label=document.createElement('label');const radio=document.createElement('input');radio.type='radio';radio.name=`q${i}`;radio.value=oi+1;label.appendChild(radio);label.appendChild(document.createTextNode(opt));wrap.appendChild(label);});quizForm.appendChild(wrap);});}
+  </script>
+</body>
+</html>
